@@ -1,5 +1,4 @@
 const express = require("express");
-
 const {readUsers, rewriteUsers} = require('./helper');
 
 const app = express();
@@ -8,7 +7,9 @@ app.use(express.json())
 const port = 5000;
 
 app.get('/users', (req, res) => {
-    readUsers().then(users => res.json(users));
+    readUsers().then(users =>
+        res.json(users)
+    );
 });
 
 app.get('/users/:id', (req, res) => {
@@ -33,43 +34,68 @@ app.get('/users/:id', (req, res) => {
 
 app.post('/users', (req, res) => {
 
-    const {name, age, gender} = req.body;
-
     readUsers().then(async users => {
-        const newId = users.slice(-1)[0].id + 1
 
-        const newUser = {
-            id: newId,
-            name,
-            age,
-            gender,
-        };
+        const {name, age, gender, id} = req.body
 
-        users.push(newUser);
-        await rewriteUsers(users);
+        if (name && age && gender) {
 
-        res.status(201).json('User been created');
+            const userId = users.length ? users[users.length - 1].id + 1 : 1;
+
+            const newUser = {
+                id: userId,
+                name,
+                age,
+                gender
+            };
+
+            users.push(newUser);
+            await rewriteUsers(users);
+
+            if (id) {
+                res.status(201).json(`User been created with id ${userId}`);
+            } else {
+                res.status(201).json('User been created');
+            }
+        } else {
+            res.status(409).json('Fill user with data');
+        }
+
     })
 
 });
 
 app.put('/users/:id', (req, res) => {
-    const id = +req.params.id;
+    const userId = +req.params.id;
 
     readUsers().then(async users => {
 
-        const userForUpdate = {
-            id,
-            name: req.body.name,
-            age: req.body.age,
-            gender: req.body.gender
+        const user = users.find(user => user.id === userId);
+
+        const {name, age, gender} = req.body
+
+        if (!user) {
+            res.status(404).json(`No user with id ${userId}`);
+            return;
         }
 
-        const idOfUpdatedUser = users.findIndex(user => user.id === id);
+        if (name && age && gender) {
+            const userForUpdate = {
+                id: userId,
+                name,
+                age,
+                gender
+            };
 
-        users[idOfUpdatedUser] = userForUpdate;
-        await rewriteUsers(users);
-        res.status(202).json(`User with id ${id} was updated`)
+            const idOfUpdatedUser = users.findIndex(user => user.id === userId);
+            users[idOfUpdatedUser] = userForUpdate;
+            await rewriteUsers(users);
+
+            res.status(202).json(`User with id ${userId} was updated`)
+
+        } else {
+            res.status(409).json('Fill user with data');
+        }
     })
 })
 
@@ -77,12 +103,18 @@ app.delete('/users/:id', (req, res) => {
     const id = +req.params.id;
 
     readUsers().then(async users => {
+        const user = users.find(user => user.id === id);
+
+        if (!user) {
+            res.status(404).json(`No user with id ${id}`);
+            return;
+        }
+
         const newUsers = users.filter(user => user.id !== id);
         await rewriteUsers(newUsers);
         res.status(204).json('User was successfully deleted')
     })
 })
-
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
