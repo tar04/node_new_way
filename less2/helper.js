@@ -1,11 +1,9 @@
 const fs = require("fs/promises");
 
 async function readUsers() {
+    const data = await fs.readFile('./db/users.json');
 
-    const users = (await fs.readFile('./db/users.json')).toString()
-
-    if (users) return JSON.parse(users)
-    else return [];
+    return data.toString() ? JSON.parse(data.toString()) : []
 }
 
 async function rewriteUsers(users) {
